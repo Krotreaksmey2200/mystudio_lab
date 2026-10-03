@@ -175,6 +175,10 @@ class JobManager:
         self.jobs[job_id] = job_info
         self.save_jobs()
 
+        # Launch background runner task
+        asyncio.create_task(self._run_job_process(job_id, exec_script, run_dir, log_path))
+        return job_id
+
     def get_job_notebook_cells(self, job_id: str) -> Optional[List[Dict[str, Any]]]:
         job = self.jobs.get(job_id)
         if not job or not job.get("is_notebook"):
@@ -200,10 +204,6 @@ class JobManager:
             return cells
         except Exception as e:
             return [{"index": 1, "type": "error", "source": str(e), "outputs": []}]
-
-        # Launch background runner task
-        asyncio.create_task(self._run_job_process(job_id, exec_script, run_dir, log_path))
-        return job_id
 
     async def _run_job_process(self, job_id: str, script_path: str, cwd: str, log_path: str):
         start_time = time.time()
