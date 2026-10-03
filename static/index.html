@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrainStudio AI - 24/7 Model Training Hub</title>
+  <meta name="description" content="Persistent 24/7 AI Model Training Studio & Real-time Live Log Monitor for Jupyter Notebooks and Python scripts.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">TrainStudio AI</div>
+        <div style="font-size: 0.72rem; color: var(--text-dim);">Persistent 24/7 Notebook & Model Runner</div>
+      </div>
+      <div class="live-badge" id="daemon-badge">
+        <span class="pulse-dot"></span>
+        <span>DAEMON RUNNER: ONLINE</span>
+      </div>
+    </div>
+
+    <div class="header-metrics">
+      <div class="metric-chip" title="Hardware Acceleration Status">
+        <span class="label">Acceleration:</span>
+        <span class="value" id="hdr-gpu">Detecting...</span>
+      </div>
+      <div class="metric-chip">
+        <span class="label">CPU:</span>
+        <span class="value" id="hdr-cpu">0%</span>
+      </div>
+      <div class="metric-chip">
+        <span class="label">RAM:</span>
+        <span class="value" id="hdr-ram">0 / 0 GB</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btn-refresh-stats" title="Refresh status">
+        🔄 Refresh
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    
+    <!-- Top System Metrics Bar -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Active 24/7 Jobs</span>
+          <span>⚡</span>
+        </div>
+        <div class="stat-value" id="card-active-jobs">0</div>
+        <div class="stat-sub">Running continuously in background</div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="prog-jobs" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>CPU Utilization</span>
+          <span>💻</span>
+        </div>
+        <div class="stat-value"><span id="card-cpu-val">0</span>%</div>
+        <div class="stat-sub">Multi-core processor load</div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="prog-cpu" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Memory (RAM)</span>
+          <span>🧠</span>
+        </div>
+        <div class="stat-value"><span id="card-ram-val">0</span>%</div>
+        <div class="stat-sub" id="card-ram-sub">0 GB of 0 GB used</div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="prog-ram" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Available Storage</span>
+          <span>💾</span>
+        </div>
+        <div class="stat-value"><span id="card-disk-val">0</span> GB</div>
+        <div class="stat-sub">Checkpoints & Datasets space</div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="prog-disk" style="width: 15%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Workspace -->
+    <div class="studio-grid">
+      
+      <!-- Left Column: Controls & Launch -->
+      <aside style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- Upload Card -->
+        <div class="glass-card">
+          <div class="card-title">
+            <span>🚀 Launch Training</span>
+            <span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: normal;">.ipynb / .py</span>
+          </div>
+
+          <!-- Dropzone -->
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="file-input" class="file-input" accept=".ipynb,.py">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-title" id="dropzone-text">Drop Notebook (.ipynb) or .py here</div>
+            <div class="dropzone-desc">Click or drag file to start 24/7 background training</div>
+          </div>
+
+          <div id="selected-file-panel" style="display: none; margin-top: 14px; padding: 12px; background: rgba(0, 242, 254, 0.06); border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.2);">
+            <div style="font-size: 0.85rem; font-weight: 600; color: #fff;" id="selected-filename">filename.ipynb</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim);" id="selected-filesize">0 KB</div>
+            <button class="btn btn-primary btn-block" id="btn-start-upload" style="margin-top: 10px;">
+              ▶️ Start 24/7 Execution
+            </button>
+          </div>
+
+          <div style="text-align: center; margin: 16px 0 10px; color: var(--text-dim); font-size: 0.8rem;">
+            — ឬសាកល្បង Demo ភ្លាមៗ (Or Try Demo) —
+          </div>
+
+          <button class="btn btn-secondary btn-block" id="btn-run-sample">
+            🧪 Run Sample Neural Network (Demo)
+          </button>
+        </div>
+
+        <!-- 24/7 Background Execution Info Banner -->
+        <div class="glass-card" style="border-left: 4px solid var(--accent-emerald);">
+          <div style="font-weight: 700; font-size: 0.9rem; color: var(--accent-emerald); display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+            <span>🛡️ Background 24/7 Protection</span>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+            កូដ និង Notebook ដែលអ្នក Upload នឹងដំណើរការក្នុង <strong>Daemon Subprocess</strong> ឯករាជ្យ។ អ្នកអាច<strong>បិទ Browser ឬបិទ Tab ចោល</strong>បានដោយសុវត្ថិភាព ការ Train នឹងមិនដាច់ឡើយ។
+          </p>
+        </div>
+
+        <!-- Checkpoints & Saved Artifacts for Active Job -->
+        <div class="glass-card">
+          <div class="card-title">
+            <span>💾 Saved Models & Weights</span>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-artifacts">🔄</button>
+          </div>
+          <div id="artifacts-list">
+            <div class="empty-placeholder">No checkpoints generated yet</div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Right Column: Live Terminal & Metrics Graphs -->
+      <section class="terminal-wrapper">
+        
+        <!-- Live Terminal Window -->
+        <div class="terminal-card">
+          <div class="terminal-header">
+            <div class="terminal-title-group">
+              <div class="mac-dots">
+                <span class="mac-dot dot-red"></span>
+                <span class="mac-dot dot-yellow"></span>
+                <span class="mac-dot dot-green"></span>
+              </div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: #fff; font-family: var(--font-mono);" id="terminal-job-title">
+                Console: No Active Job
+              </div>
+              <span class="job-badge badge-stopped" id="terminal-job-status">IDLE</span>
+            </div>
+
+            <div class="terminal-actions">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); cursor: pointer;">
+                <input type="checkbox" id="chk-autoscroll" checked>
+                Auto-scroll
+              </label>
+              <button class="btn btn-secondary btn-sm" id="btn-clear-terminal" title="Clear console">
+                🧹 Clear
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-download-log" title="Download log file">
+                📥 Log
+              </button>
+              <button class="btn btn-danger btn-sm" id="btn-stop-job" style="display: none;">
+                ⏹️ Stop Training
+              </button>
+            </div>
+          </div>
+
+          <div class="terminal-body" id="terminal-body">
+=== TrainStudio AI Live Execution Terminal ===
+Ready for job execution. Upload a Jupyter Notebook (.ipynb) or Python script (.py) to start.
+Logs will stream here in real-time via WebSocket.
+          </div>
+        </div>
+
+        <!-- Real-time Training Curves (Loss & Accuracy) -->
+        <div class="glass-card">
+          <div class="card-title">
+            <span>📈 Live Training Curves (Loss & Accuracy)</span>
+            <span style="font-size: 0.75rem; color: var(--text-dim);" id="chart-metrics-info">Waiting for epoch data...</span>
+          </div>
+
+          <div class="charts-grid">
+            <div class="chart-box">
+              <div class="chart-header">
+                <span>Loss Progression</span>
+                <span style="color: #fb923c;" id="val-current-loss">--</span>
+              </div>
+              <canvas id="lossChart" height="150"></canvas>
+            </div>
+
+            <div class="chart-box">
+              <div class="chart-header">
+                <span>Accuracy (%)</span>
+                <span style="color: #4ade80;" id="val-current-acc">--</span>
+              </div>
+              <canvas id="accChart" height="150"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- History of Runs -->
+        <div class="glass-card">
+          <div class="card-title">
+            <span>📋 Execution History</span>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-history">🔄 Refresh</button>
+          </div>
+          <div id="job-history-list">
+            <div class="empty-placeholder">No jobs recorded yet</div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
