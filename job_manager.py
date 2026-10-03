@@ -158,6 +158,8 @@ class JobManager:
             "id": job_id,
             "filename": filename,
             "type": "Notebook (.ipynb)" if is_notebook else "Python Script (.py)",
+            "is_notebook": is_notebook,
+            "original_path": original_path,
             "status": "RUNNING",
             "created_at": datetime.now().isoformat(),
             "started_at": datetime.now().isoformat(),
@@ -172,6 +174,32 @@ class JobManager:
 
         self.jobs[job_id] = job_info
         self.save_jobs()
+
+    def get_job_notebook_cells(self, job_id: str) -> Optional[List[Dict[str, Any]]]:
+        job = self.jobs.get(job_id)
+        if not job or not job.get("is_notebook"):
+            return None
+        orig_path = job.get("original_path")
+        if not orig_path or not os.path.exists(orig_path):
+            return None
+        try:
+            with open(orig_path, "r", encoding="utf-8") as f:
+                nb = nbformat.read(f, as_version=4)
+            cells = []
+            for idx, cell in enumerate(nb.cells):
+                cells.append({
+                    "index": idx + 1,
+                    "type": cell.cell_type,
+                    "source": cell.source,
+                    "outputs": [
+                        out.get("text", "") or (out.get("data", {}).get("text/plain", "") if isinstance(out.get("data"), dict) else "")
+                        for out in cell.get("outputs", [])
+                        if isinstance(out, dict)
+                    ]
+                })
+            return cells
+        except Exception as e:
+            return [{"index": 1, "type": "error", "source": str(e), "outputs": []}]
 
         # Launch background runner task
         asyncio.create_task(self._run_job_process(job_id, exec_script, run_dir, log_path))

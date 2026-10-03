@@ -5,6 +5,8 @@ let activeWebSocket = null;
 let selectedFile = null;
 let lossChart = null;
 let accChart = null;
+let currentNotebookCells = [];
+let currentTab = 'terminal';
 
 // Initialize charts using Chart.js or canvas fallback
 function initCharts() {
@@ -370,7 +372,148 @@ function setupEvents() {
     document.getElementById('selected-filename').textContent = file.name;
     document.getElementById('selected-filesize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
     document.getElementById('selected-file-panel').style.display = 'block';
+
+    if (file.name.endsWith('.ipynb')) {
+      parseNotebookFile(file);
+    } else {
+      document.getElementById('nb-cell-count').textContent = 'Script (.py)';
+      currentNotebookCells = [];
+    }
   }
+
+  // Parse notebook file locally with instant FileReader
+  function parseNotebookFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const nb = JSON.parse(e.target.result);
+        const cells = (nb.cells || []).map((c, idx) => ({
+          index: idx + 1,
+          type: c.cell_type,
+          source: Array.isArray(c.source) ? c.source.join('') : (c.source || ''),
+          outputs: (c.outputs || []).map(out => {
+            if (out.text) return Array.isArray(out.text) ? out.text.join('') : out.text;
+            if (out.data && out.data['text/plain']) {
+              const p = out.data['text/plain'];
+              return Array.isArray(p) ? p.join('') : p;
+            }
+            return '';
+          }).filter(Boolean)
+        }));
+
+        currentNotebookCells = cells;
+        document.getElementById('nb-cell-count').textContent = `${cells.length} Cells`;
+        document.getElementById('nb-viewer-title').textContent = `Notebook Preview: ${file.name} (${cells.length} cells)`;
+        renderNotebookCells(cells);
+      } catch (err) {
+        console.error('Failed to parse notebook JSON:', err);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Render Notebook Cells into container
+  function renderNotebookCells(cells, filterText = '') {
+    const container = document.getElementById('nb-cells-container');
+    if (!cells || cells.length === 0) {
+      container.innerHTML = '<div class="empty-placeholder">No cells found in this notebook</div>';
+      return;
+    }
+
+    const filtered = filterText
+      ? cells.filter(c => c.source.toLowerCase().includes(filterText.toLowerCase()))
+      : cells;
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="empty-placeholder">No cells matching "${filterText}"</div>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map(c => {
+      const isCode = c.type === 'code';
+      const badgeClass = isCode ? 'badge-code' : 'badge-markdown';
+      const cellLabel = isCode ? `In [${c.index}]` : `Doc [${c.index}]`;
+
+      const outputsHtml = (c.outputs && c.outputs.length > 0)
+        ? `<div class="nb-cell-output"><strong>Outputs:</strong>\n${escapeHtml(c.outputs.join('\n'))}</div>`
+        : '';
+
+      return `
+        <div class="nb-cell">
+          <div class="nb-cell-header">
+            <span>${cellLabel}</span>
+            <span class="nb-cell-badge ${badgeClass}">${c.type}</span>
+          </div>
+          <div class="nb-cell-content">${escapeHtml(c.source)}</div>
+          ${outputsHtml}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Tab Switching
+  function switchTab(tab) {
+    currentTab = tab;
+    const tabTerm = document.getElementById('tab-terminal');
+    const tabNb = document.getElementById('tab-notebook');
+    const termBody = document.getElementById('terminal-body');
+    const nbBody = document.getElementById('notebook-viewer-body');
+    const autoscrollLabel = document.getElementById('autoscroll-label');
+
+    if (tab === 'terminal') {
+      tabTerm.classList.add('active');
+      tabNb.classList.remove('active');
+      termBody.style.display = 'block';
+      nbBody.style.display = 'none';
+      if (autoscrollLabel) autoscrollLabel.style.display = 'inline-flex';
+    } else {
+      tabNb.classList.add('active');
+      tabTerm.classList.remove('active');
+      termBody.style.display = 'none';
+      nbBody.style.display = 'block';
+      if (autoscrollLabel) autoscrollLabel.style.display = 'none';
+      renderNotebookCells(currentNotebookCells, document.getElementById('nb-filter-input').value);
+    }
+  }
+
+  // Fetch notebook cells for an existing job
+  async function fetchJobNotebook(jobId) {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/notebook`);
+      if (!res.ok) {
+        document.getElementById('nb-cell-count').textContent = '0 Cells';
+        currentNotebookCells = [];
+        return;
+      }
+      const data = await res.json();
+      currentNotebookCells = data.cells || [];
+      document.getElementById('nb-cell-count').textContent = `${currentNotebookCells.length} Cells`;
+      document.getElementById('nb-viewer-title').textContent = `Notebook Preview: #${jobId} (${currentNotebookCells.length} cells)`;
+      if (currentTab === 'notebook') {
+        renderNotebookCells(currentNotebookCells);
+      }
+    } catch (err) {
+      console.error('Error fetching job notebook:', err);
+    }
+  }
+
+  // Attach tab events
+  document.getElementById('tab-terminal').addEventListener('click', () => switchTab('terminal'));
+  document.getElementById('tab-notebook').addEventListener('click', () => switchTab('notebook'));
+  document.getElementById('btn-preview-selected').addEventListener('click', () => switchTab('notebook'));
+  document.getElementById('nb-filter-input').addEventListener('input', (e) => {
+    renderNotebookCells(currentNotebookCells, e.target.value);
+  });
 
   // Upload and Start
   startUploadBtn.addEventListener('click', async () => {
@@ -393,6 +536,7 @@ function setupEvents() {
         fileInput.value = '';
         await fetchJobs();
         selectJob(data.job_id);
+        switchTab('terminal');
       } else {
         alert(data.detail || 'Failed to start job');
       }
@@ -414,6 +558,7 @@ function setupEvents() {
       if (data.success) {
         await fetchJobs();
         selectJob(data.job_id);
+        switchTab('terminal');
       }
     } catch (err) {
       alert('Error launching sample: ' + err.message);
@@ -451,6 +596,13 @@ function setupEvents() {
   refreshHistoryBtn.addEventListener('click', fetchJobs);
   refreshArtifactsBtn.addEventListener('click', () => fetchArtifacts(activeJobId));
 }
+
+// Select and Connect to a Job (override with fetchJobNotebook)
+const originalSelectJob = selectJob;
+selectJob = function(jobId) {
+  originalSelectJob(jobId);
+  fetchJobNotebook(jobId);
+};
 
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', () => {

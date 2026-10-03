@@ -123,9 +123,14 @@
           <div id="selected-file-panel" style="display: none; margin-top: 14px; padding: 12px; background: rgba(0, 242, 254, 0.06); border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.2);">
             <div style="font-size: 0.85rem; font-weight: 600; color: #fff;" id="selected-filename">filename.ipynb</div>
             <div style="font-size: 0.75rem; color: var(--text-dim);" id="selected-filesize">0 KB</div>
-            <button class="btn btn-primary btn-block" id="btn-start-upload" style="margin-top: 10px;">
-              ▶️ Start 24/7 Execution
-            </button>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <button class="btn btn-primary" id="btn-start-upload" style="flex: 1;">
+                ▶️ Start 24/7 Execution
+              </button>
+              <button class="btn btn-secondary" id="btn-preview-selected" style="flex: 1;" title="Preview Notebook Cells">
+                👁️ Preview Cells
+              </button>
+            </div>
           </div>
 
           <div style="text-align: center; margin: 16px 0 10px; color: var(--text-dim); font-size: 0.8rem;">
@@ -163,7 +168,7 @@
       <!-- Right Column: Live Terminal & Metrics Graphs -->
       <section class="terminal-wrapper">
         
-        <!-- Live Terminal Window -->
+        <!-- Live Terminal Window & Notebook Viewer -->
         <div class="terminal-card">
           <div class="terminal-header">
             <div class="terminal-title-group">
@@ -172,14 +177,20 @@
                 <span class="mac-dot dot-yellow"></span>
                 <span class="mac-dot dot-green"></span>
               </div>
-              <div style="font-size: 0.85rem; font-weight: 600; color: #fff; font-family: var(--font-mono);" id="terminal-job-title">
-                Console: No Active Job
+              <!-- Tab Group -->
+              <div class="tab-group">
+                <button class="tab-btn active" id="tab-terminal">
+                  📟 Console Log
+                </button>
+                <button class="tab-btn" id="tab-notebook">
+                  📓 Preview Notebook (<span id="nb-cell-count">0</span>)
+                </button>
               </div>
               <span class="job-badge badge-stopped" id="terminal-job-status">IDLE</span>
             </div>
 
             <div class="terminal-actions">
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); cursor: pointer;">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" id="autoscroll-label">
                 <input type="checkbox" id="chk-autoscroll" checked>
                 Auto-scroll
               </label>
@@ -195,10 +206,24 @@
             </div>
           </div>
 
+          <!-- Console Terminal Body -->
           <div class="terminal-body" id="terminal-body">
 === TrainStudio AI Live Execution Terminal ===
 Ready for job execution. Upload a Jupyter Notebook (.ipynb) or Python script (.py) to start.
 Logs will stream here in real-time via WebSocket.
+          </div>
+
+          <!-- Notebook Viewer Body -->
+          <div class="notebook-viewer-body" id="notebook-viewer-body">
+            <div class="nb-toolbar">
+              <div style="font-size: 0.85rem; font-weight: 600; color: #fff;" id="nb-viewer-title">
+                Notebook Preview: No file selected
+              </div>
+              <input type="text" class="nb-search-input" id="nb-filter-input" placeholder="🔍 Search code / text in cells...">
+            </div>
+            <div id="nb-cells-container">
+              <div class="empty-placeholder">Select a notebook or click "Preview Cells" to view code cells</div>
+            </div>
           </div>
         </div>
 

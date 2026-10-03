@@ -56,6 +56,13 @@ async def stop_job(job_id: str):
     success = await job_mgr.stop_job(job_id)
     return {"job_id": job_id, "stopped": success}
 
+@app.get("/api/jobs/{job_id}/notebook")
+async def get_job_notebook(job_id: str):
+    cells = job_mgr.get_job_notebook_cells(job_id)
+    if cells is None:
+        raise HTTPException(status_code=404, detail="Notebook not found or job is not a notebook")
+    return {"job_id": job_id, "cells": cells}
+
 @app.get("/api/jobs/{job_id}/artifacts")
 async def get_artifacts(job_id: str):
     artifacts = job_mgr.get_job_artifacts(job_id)
