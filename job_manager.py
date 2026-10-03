@@ -305,15 +305,17 @@ class JobManager:
 
         active_jobs_count = len([j for j in self.jobs.values() if j.get("status") == "RUNNING"])
 
-        # Check for Apple Silicon GPU (MPS) or NVIDIA
-        gpu_info = "Apple Silicon MPS / CPU"
+        # Check for NVIDIA GPU (CUDA) or Apple Silicon (MPS)
+        gpu_info = "CPU (No GPU Detected)"
         try:
             import torch
-            if torch.backends.mps.is_available():
-                gpu_info = "Apple Silicon (MPS Hardware Acceleration Active)"
-            elif torch.cuda.is_available():
-                gpu_info = f"NVIDIA {torch.cuda.get_device_name(0)}"
-        except ImportError:
+            if torch.cuda.is_available():
+                name = torch.cuda.get_device_name(0)
+                vram_gb = round(torch.cuda.get_device_properties(0).total_memory / (1024 ** 3), 1)
+                gpu_info = f"NVIDIA {name} ({vram_gb} GB VRAM)"
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                gpu_info = "Apple Silicon (MPS Acceleration)"
+        except Exception:
             pass
 
         return {
